@@ -25,29 +25,28 @@ namespace ExifModifier
 
         static void Main(string[] args)
         {
-            //Explore current and child directories
-            string currentDirectory = Directory.GetCurrentDirectory();
-
-            //currentDirectory = Path.Combine(new string[] { currentDirectory, "Img" });
-
-            IEnumerable<string> files = Directory.EnumerateFiles(currentDirectory, "*.jp*g", SearchOption.AllDirectories);
+            IEnumerable<string> files = 
+                Directory.EnumerateFiles(Directory.GetCurrentDirectory(), "*.jp*g", SearchOption.AllDirectories);
 
             if (files.Count() == 0) return;
 
             foreach (var file in files)
             {
-                Image currentImage = Image.FromFile(file);
+                Image image = Image.FromFile(file);
 
                 //Update LastWriteTime
-                if (currentImage.PropertyItems.Any(p => p.Id == (int)PropertyItemId.ExifImageDateTimeOriginal))
+                if (image.PropertyItems.Any(p => p.Id == (int)PropertyItemId.ExifImageDateTimeOriginal))
                 {
-                    PropertyItem exifImageDateTimeOriginal = currentImage.GetPropertyItem((int)PropertyItemId.ExifImageDateTimeOriginal);
+                    PropertyItem exifImageDateTimeOriginal = image.GetPropertyItem((int)PropertyItemId.ExifImageDateTimeOriginal);
 
-                    currentImage.Dispose();
+                    image.Dispose();
 
                     string exifImageDateTimeOriginalStr = Encoding.UTF8.GetString(exifImageDateTimeOriginal.Value, 0, exifImageDateTimeOriginal.Len - 1);
 
-                    DateTime.TryParseExact(exifImageDateTimeOriginalStr, "yyyy:MM:dd HH:mm:ss", CultureInfo.CurrentCulture, DateTimeStyles.None, out DateTime exifImageDateTimeOriginalParsed);
+                    DateTime.TryParseExact(
+                        exifImageDateTimeOriginalStr, "yyyy:MM:dd HH:mm:ss", CultureInfo.CurrentCulture, DateTimeStyles.None, 
+                        out DateTime exifImageDateTimeOriginalParsed);
+
                     Console.WriteLine(exifImageDateTimeOriginalParsed);
 
                     if(File.GetLastWriteTime(file) != exifImageDateTimeOriginalParsed)
@@ -61,12 +60,12 @@ namespace ExifModifier
                 {
                     Console.WriteLine("null");
 
-                    var propertyItem = (PropertyItem)FormatterServices.GetUninitializedObject(typeof(PropertyItem));
+                    PropertyItem propertyItem = (PropertyItem)FormatterServices.GetUninitializedObject(typeof(PropertyItem));
 
                     DateTime lastWriteTime = File.GetLastWriteTime(file);
 
                     propertyItem.Type = 2;
-                    propertyItem.Value = Encoding.UTF8.GetBytes(lastWriteTime.ToString("yyyy:MM:dd HH:mm:ss") + '\0'); //'\0' es un byte nulo
+                    propertyItem.Value = Encoding.UTF8.GetBytes(lastWriteTime.ToString("yyyy:MM:dd HH:mm:ss") + '\0'); //'\0' null byte
                     propertyItem.Len = propertyItem.Value.Length;
 
                     foreach (int i in new int[]{ 
@@ -75,17 +74,14 @@ namespace ExifModifier
                                         (int)PropertyItemId.ExifPhotoDateTimeDigitized})
                     {
                         propertyItem.Id = i;
-                        currentImage.SetPropertyItem(propertyItem);
+                        image.SetPropertyItem(propertyItem);
                     }
 
-                    // save to a memorystream
                     MemoryStream memoryStream = new MemoryStream();
-                    currentImage.Save(memoryStream, currentImage.RawFormat);
+                    image.Save(memoryStream, image.RawFormat);
 
-                    // dispose old image
-                    currentImage.Dispose();
+                    image.Dispose();
 
-                    // save new image to same filename
                     Image newImage = Image.FromStream(memoryStream);
                     newImage.Save(file);
                     
