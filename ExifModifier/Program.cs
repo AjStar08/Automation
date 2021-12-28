@@ -25,6 +25,9 @@ namespace ExifModifier
 
         static void Main(string[] args)
         {
+            Console.WriteLine($"Make sure the computer timezone is same where the pics were taken.");
+            Console.ReadKey();
+
             IEnumerable<string> files = 
                 Directory.EnumerateFiles(Directory.GetCurrentDirectory(), "*.jp*g", SearchOption.AllDirectories);
 
@@ -33,6 +36,8 @@ namespace ExifModifier
             foreach (var file in files)
             {
                 Image image = Image.FromFile(file);
+
+                Console.WriteLine($"{file}");
 
                 //Update LastWriteTime
                 if (image.PropertyItems.Any(p => p.Id == (int)PropertyItemId.ExifImageDateTimeOriginal))
@@ -47,31 +52,38 @@ namespace ExifModifier
                         exifImageDateTimeOriginalStr, "yyyy:MM:dd HH:mm:ss", CultureInfo.CurrentCulture, DateTimeStyles.None, 
                         out DateTime exifImageDateTimeOriginalParsed);
 
-                    Console.WriteLine(exifImageDateTimeOriginalParsed);
+                    Console.WriteLine($"Found DTO: {exifImageDateTimeOriginalParsed}");
 
                     if(File.GetLastWriteTime(file) != exifImageDateTimeOriginalParsed)
                     {
                         File.SetLastWriteTime(file, exifImageDateTimeOriginalParsed);
                         //File.SetLastWriteTimeUtc(file, exifImageDateTimeOriginalParsed.ToUniversalTime());
+
+                        Console.WriteLine($"Updated LWT: {exifImageDateTimeOriginalParsed}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"No need to update LWT");
                     }
                 }
                 //Update Exif dates
                 else
                 {
-                    Console.WriteLine("null");
-
                     PropertyItem propertyItem = (PropertyItem)FormatterServices.GetUninitializedObject(typeof(PropertyItem));
 
                     DateTime lastWriteTime = File.GetLastWriteTime(file);
+
+                    Console.WriteLine($"Found LWT: {lastWriteTime}");
 
                     propertyItem.Type = 2;
                     propertyItem.Value = Encoding.UTF8.GetBytes(lastWriteTime.ToString("yyyy:MM:dd HH:mm:ss") + '\0'); //'\0' null byte
                     propertyItem.Len = propertyItem.Value.Length;
 
                     foreach (int i in new int[]{ 
-                                        (int)PropertyItemId.ExifImageDateTime, 
+                                        //(int)PropertyItemId.ExifImageDateTime, 
                                         (int)PropertyItemId.ExifImageDateTimeOriginal, 
-                                        (int)PropertyItemId.ExifPhotoDateTimeDigitized})
+                                        //(int)PropertyItemId.ExifPhotoDateTimeDigitized
+                                        })
                     {
                         propertyItem.Id = i;
                         image.SetPropertyItem(propertyItem);
@@ -84,7 +96,9 @@ namespace ExifModifier
 
                     Image newImage = Image.FromStream(memoryStream);
                     newImage.Save(file);
-                    
+
+                    Console.WriteLine($"Updated DTO: {lastWriteTime}");
+
                     File.SetLastWriteTime(file, lastWriteTime);
                 }
             }
